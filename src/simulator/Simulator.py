@@ -11,14 +11,16 @@ from server.FedAvgServer import FedAvgServer
 from client.ScaffoldClient import ScaffoldClient
 from server.ScaffoldServer import ScaffoldServer
 from torch.utils.data import Subset, random_split
+from ProFed.partitioner import Environment, Region, download_dataset, split_train_validation, partition_to_subregions
 
 class Simulator:
 
     def __init__(self, algorithm, partitioning, areas, dataset_name, n_clients, batch_size, local_epochs, data_folder, seed):
+        self.seed = seed
         self.batch_size = batch_size
         self.local_epochs = local_epochs
         self.dataset_name = dataset_name
-        self.complete_dataset, self.training_data, self.validation_data = self.initialize_data()
+        self.training_data, self.validation_data, self.test_data = self.initialize_data()
         self.partitioning = partitioning
         self.algorithm = algorithm
         self.areas = areas
@@ -96,64 +98,35 @@ class Simulator:
         self.server.aggregate()
 
     def initialize_data(self):
-        d = self.get_dataset()
-        dataset_size = len(d)
-        training_size = int(dataset_size * 0.8)
-        validation_size = dataset_size - training_size
-        training_data, validation_data = random_split(d, [training_size, validation_size])
-        return d, training_data, validation_data
+        train, test_data = download_dataset(self.dataset_name)
+        training_data, validation_data = split_train_validation(train, 0.8)
+        return training_data, validation_data, test_data
 
     def map_client_to_data(self) -> dict[int, Subset]:
         clients_split = np.array_split(list(range(self.n_clients)), self.areas)
-        mapping_area_clients = { areaId: list(clients_split[areaId]) for areaId in range(self.areas) }
-        if self.partitioning.lower() == 'hard':
-            mapping = utils.hard_non_iid_mapping(self.areas, len(self.complete_dataset.classes))
-            distribution_per_area = utils.partitioning(mapping, self.training_data)
-        elif self.partitioning.lower() == 'iid':
-            mapping = utils.iid_mapping(self.areas, len(self.complete_dataset.classes))
-            distribution_per_area = utils.partitioning(mapping, self.training_data)
-        elif self.partitioning.lower() == 'dirichlet':
-            distribution_per_area = utils.dirichlet_partitioning(self.training_data, self.areas, 0.5)
-            self.save_distribution_heatmap(distribution_per_area)
-        else:
-            raise Exception(f'Partitioning {self.partitioning} not supported! Please check :)')
-        mapping_client_data = {}
-        for area in mapping_area_clients.keys():
-            clients = mapping_area_clients[area]
-            indexes = distribution_per_area[area]
-            random.shuffle(indexes)
-            split = np.array_split(indexes, len(clients))
-            for i, c in enumerate(clients):
-                mapping_client_data[c] = Subset(self.complete_dataset, split[i])
-        return mapping_client_data
+        mapping_devices_area = { areaId: list(clients_split[areaId]) for areaId in range(self.areas) }
+
+        environment = partition_to_subregions(self.training_data, self.validation_data, self.dataset_name, self.partitioning, self.areas, self.seed)
+
+        mapping = {}
+        for region_id, devices in mapping_devices_area.items():
+            mapping_devices_data = environment.from_subregion_to_devices(region_id, len(devices))
+            for device_index, data in mapping_devices_data.items():
+                device_id = devices[device_index]
+                mapping[device_id] = data # data is tuple(training_subset, validation_subset)
+        return mapping
 
     def test_global_model(self, validation = True):
         model = self.server.model
         if validation:
             dataset = self.validation_data
         else:
-            dataset = self.get_dataset(False)
+            dataset = self.test_data
         loss, accuracy = utils.test_model(model, dataset, self.batch_size, self.device)
-        # if validation:
-        #     print(f'Validation ----> loss: {loss}   accuracy: {accuracy}')
         if not validation:
             data = pd.DataFrame({'Loss': [loss], 'Accuracy': [accuracy]})
             data.to_csv(f'{self.export_path}-test.csv', index=False)
         return loss, accuracy
-
-    def get_dataset(self, train = True):
-        transform = transforms.Compose([transforms.ToTensor()])
-        if self.dataset_name == 'MNIST':
-            dataset = datasets.MNIST(root='dataset', train=train, download=True, transform=transform)
-        elif self.dataset_name == 'CIFAR10':
-            dataset = datasets.CIFAR10(root='dataset', train=train, download=True, transform=transform)
-        elif self.dataset_name == 'EMNIST':
-            dataset = datasets.EMNIST(root='dataset', split = 'letters', train=train, download=True, transform=transform)
-        elif self.dataset_name == 'FashionMNIST':
-            dataset = datasets.FashionMNIST(root='dataset', train=train, download=True, transform=transform)
-        else:
-            raise Exception(f'Dataset {self.dataset_name} not supported! Please check :)')
-        return dataset
 
     def export_data(self, global_round, training_loss, evaluation_loss, evaluation_accuracy):
         """
@@ -172,19 +145,3 @@ class Simulator:
         :return: Nothing
         """
         self.simulation_data.to_csv(f'{self.export_path}.csv', index=False)
-
-    def save_distribution_heatmap(self, distribution_per_area):
-        matrix = []
-        for k, indexes in distribution_per_area.items():
-            # print(f'Area {k} has {len(indexes)} images')
-            v = [self.training_data.dataset.targets[index].item() for index in indexes]
-            count = Counter(v)
-            for i in range(len(self.training_data.dataset.classes)):
-                if i not in count:
-                    count[i] = 0
-            count = dict(sorted(count.items()))
-            matrix.append(count)
-
-        rows = [[d[k] for k in d] for d in matrix]
-        matrix = np.array(rows)
-        utils.plot_heatmap(matrix, len(self.training_data.dataset.classes), self.areas, 'Dirichlet', False)
