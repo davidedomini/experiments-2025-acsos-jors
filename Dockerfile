@@ -1,6 +1,6 @@
-FROM python:3.12
+FROM python:3.13
 RUN mkdir -p /experiment
-VOLUME "/data"
+VOLUME "davide.domini-volume"
 ENV DATA_DIR=/data
 WORKDIR /experiment
 COPY requirements.txt /experiment
