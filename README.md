@@ -1,10 +1,13 @@
-# Experiments LMCS Field-based FL Baselines
+# Experiments ACSOS Artifact Evaluation Track
 
-This repository contains the experiments for a paper on Field-based Federated Learning  submitted in the [LMCS Journal](https://lmcs.episciences.org/).
-In particular, here you can find the experiments for the algorithms used as baselines (the experiments on field-based FL are [here](https://github.com/davidedomini/experiments-2025-lmcs-field-based-FL)).
-Below you can find a summary of the experiments:
-- Algorithms: FedAVG, FedProxy and Scaffold
-- Datasets: MNIST, FashionMNIST, Extended MNIST (Handwritten letters) and CIFAR10
-- Partitioning methods: iid, hard non-iid, dirichlet distribution
+This repository contains the experiments for the artifact paper "ProFed: a Benchmark for Proximity-based non-IID Federated Learning" submitted to the Artifact Evaluation Track at ACSOS@2025.
 
- 
+## How to run the experiments 
+
+### Getting Started
+
+The file `getting-started.py` contains a simple script to demonstrate how the ProFed API works.
+
+### Complete experiments 
+
+ The file `main.py` contains the entry point to execute from scratch all the experiments. Please note that executing all the experiments may take a long time depending on the execution platform.
