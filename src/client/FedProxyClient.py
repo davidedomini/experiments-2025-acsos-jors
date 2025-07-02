@@ -12,7 +12,7 @@ class FedProxyClient:
         self.lr = 0.001
         self.epochs = epochs
         self.weight_decay=1e-4
-        self.training_set = dataset
+        self.training_set = dataset[0]
         self.batch_size = batch_size
         self.dataset_name = dataset_name
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

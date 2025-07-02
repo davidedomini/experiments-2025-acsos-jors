@@ -11,7 +11,7 @@ class ScaffoldClient:
         self.lr = 0.001
         self.epochs = epochs
         self.weight_decay=1e-4
-        self.training_set = dataset
+        self.training_set = dataset[0]
         self.batch_size = batch_size
         self._model = initialize_model(dataset_name)
         # self.global_model = initialize_model(dataset_name)
