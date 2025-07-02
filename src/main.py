@@ -24,7 +24,7 @@ if __name__ == '__main__':
     data_output_directory.mkdir(parents=True, exist_ok=True)
 
     # Experiments IID
-    partitioning = 'iid'
+    partitioning = 'IID'
     experiment_name = 'fedavg'
     areas = 3
     iid_start = time.time()
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     print(f'IID experiments took {iid_end - iid_start} seconds')
 
     # Experiments non-IID dirichlet
-    partitioning = 'dirichlet'
+    partitioning = 'Dirichlet'
     experiment_names = ['fedavg', 'fedproxy', 'scaffold']
     areas = [3, 6, 9]
     non_iid_start = time.time()
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     print(f'non-IID experiments took {non_iid_end - non_iid_start} seconds')
 
     # Experiments non-IID hard EMNIST
-    partitioning = 'hard'
+    partitioning = 'Hard'
     experiment_names = ['fedavg', 'fedproxy', 'scaffold']
     areas = [3, 5, 9]
     non_iid_start = time.time()
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     print(f'non-IID experiments hard EMNIST took {non_iid_end - non_iid_start} seconds')
 
     # Experiments non-IID hard MNIST and Fashion
-    partitioning = 'hard'
+    partitioning = 'Hard'
     experiment_names = ['fedavg', 'fedproxy', 'scaffold']
     areas = [3]
     non_iid_start = time.time()
